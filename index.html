@@ -23,7 +23,7 @@
 		color-scheme: dark;
 		--page: #0f0f0e; --surface: #171715; --ink: #ede8dc; --ink-2: #b8b2a4; --muted: #7d786d;
 		--grid: #2a2926; --axis: #3d3b36; --border: #ede8dc;
-		--red: #ff4d5e; --band: #ede8dc; --band-ink: #0f0f0e;
+		--red: #ff4d5e; --band: #ede8dc; --band-ink: #0f0f0e; --band-scheme: light;
 		--s1: #ede8dc; --s2: #ff4d5e; --s3: #3987e5;
 		--div-pos: #3987e5; --div-neg: #e5484d; --div-mid: #2a2926;
 	}
@@ -32,7 +32,7 @@
 	color-scheme: dark;
 	--page: #0f0f0e; --surface: #171715; --ink: #ede8dc; --ink-2: #b8b2a4; --muted: #7d786d;
 	--grid: #2a2926; --axis: #3d3b36; --border: #ede8dc;
-	--red: #ff4d5e; --band: #ede8dc; --band-ink: #0f0f0e;
+	--red: #ff4d5e; --band: #ede8dc; --band-ink: #0f0f0e; --band-scheme: light;
 	--s1: #ede8dc; --s2: #ff4d5e; --s3: #3987e5;
 	--div-pos: #3987e5; --div-neg: #e5484d; --div-mid: #2a2926;
 }
@@ -84,7 +84,7 @@ button { font: 700 12px "Azeret Mono", monospace; text-transform: uppercase; let
 button:hover { background: var(--red); border-color: var(--red); color: #fff; }
 
 /* Filter bar = race control band */
-#filters { position: static; z-index: 5; background: var(--band); color: var(--band-ink); padding: 14px 16px 12px; margin: 28px -16px 0; }
+#filters { color-scheme: var(--band-scheme, dark); position: static; z-index: 5; background: var(--band); color: var(--band-ink); padding: 14px 16px 12px; margin: 28px -16px 0; }
 @media (min-width: 900px) { #filters { position: sticky; top: 0; margin: 28px 0 0; } }
 #filters .f label, #filters .f .lbl { color: var(--band-ink); opacity: 0.6; display: block; margin-bottom: 5px; }
 #filters input[type=text], #filters input[type=date], #filters input[type=number] { background: transparent; color: var(--band-ink); border-color: var(--band-ink); }
