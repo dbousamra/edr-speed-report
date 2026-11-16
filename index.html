@@ -55,7 +55,9 @@ select, input[type=text], input[type=date], input[type=number] { font: inherit; 
 input[type=number] { width: 72px; }
 button { font: inherit; font-size: 13px; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--ink); cursor: pointer; }
 button:hover { background: var(--div-mid); }
-#filters { position: sticky; top: 0; z-index: 5; background: var(--page); padding: 12px 0; margin-top: 16px; border-bottom: 1px solid var(--grid); }
+[hidden] { display: none !important; }
+#filters { position: static; z-index: 5; background: var(--page); padding: 12px 0; margin-top: 16px; border-bottom: 1px solid var(--grid); }
+@media (min-width: 900px) { #filters { position: sticky; top: 0; } }
 .fgrid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
 .f label, .f .lbl { display: block; font-size: 12px; font-weight: 600; color: var(--ink-2); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.05em; }
 .f input[type=text], .f input[type=date], .f select { width: 100%; }
