@@ -407,9 +407,11 @@ function showCombo(c) {
 }
 
 // ---- Pivot: drivers x dimension ----
+// First known brand in the car name; falls back to "Other".
+const MAKES = /Aston Martin|Mercedes|Porsche|Ferrari|Ford|Mazda|Toyota|BMW|Audi|McLaren|Lamborghini|Chevrolet|Dallara|Radical|Ligier|Acura|Cadillac|Lotus|Honda|Hyundai|Nissan|Subaru|Volkswagen|Renault|Kia|Pontiac|Mustang|Formula Vee|Ray|Skip Barber|Super Formula|Holden|Caterham|Ruf|Riley|HPD|\bVW\b/;
 const PV_DIMS = {
 	car: ["Car", (c) => c.car],
-	make: ["Manufacturer", (c) => c.car.split(" ")[0]],
+	make: ["Manufacturer", (c) => { const m = (c.car.match(MAKES) || ["Other"])[0]; return m === "VW" ? "Volkswagen" : m; }],
 	track: ["Track", (c) => c.track],
 	venue: ["Venue (any layout)", (c) => c.track.replace(/\s*\(.*\)$/, "")],
 	disc: ["Discipline", (c) => c.disc[0].toUpperCase() + c.disc.slice(1)],
