@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EDR Speed Report</title>
+<meta name="description" content="Who is actually the fastest driver in EDR Endurotech? Head-to-head analysis of Garage61 team laps.">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root {
+	color-scheme: light;
+	--page: #f9f9f7; --surface: #fcfcfb; --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781;
+	--grid: #e1e0d9; --axis: #c3c2b7; --border: rgba(11,11,11,0.10);
+	--s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a;
+	--div-pos: #2a78d6; --div-neg: #e34948; --div-mid: #f0efec;
+	--accent-wash: #cde2fb;
+}
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme="light"]) {
+		color-scheme: dark;
+		--page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #898781;
+		--grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10);
+		--s1: #3987e5; --s2: #d95926; --s3: #199e70;
+		--div-pos: #3987e5; --div-neg: #e66767; --div-mid: #383835;
+		--accent-wash: #184f95;
+	}
+}
+:root[data-theme="dark"] {
+	color-scheme: dark;
+	--page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #898781;
+	--grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10);
+	--s1: #3987e5; --s2: #d95926; --s3: #199e70;
+	--div-pos: #3987e5; --div-neg: #e66767; --div-mid: #383835;
+	--accent-wash: #184f95;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--ink); font: 15px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
+main { max-width: 1100px; margin: 0 auto; padding: 32px 16px 64px; }
+h1 { font-size: clamp(28px, 5vw, 44px); line-height: 1.1; margin: 0 0 8px; letter-spacing: -0.02em; }
+h2 { font-size: 22px; margin: 0 0 4px; letter-spacing: -0.01em; }
+h3 { font-size: 15px; margin: 0 0 8px; color: var(--ink-2); font-weight: 600; }
+p { margin: 0 0 12px; }
+.sub { color: var(--ink-2); margin-bottom: 0; }
+.muted { color: var(--muted); }
+section { margin-top: 40px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+.grid { display: grid; gap: 16px; }
+.g2 { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+.g4 { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+.verdict .label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 600; }
+.verdict .who { font-size: clamp(26px, 4vw, 34px); font-weight: 700; margin: 4px 0 8px; letter-spacing: -0.01em; }
+.verdict .why { color: var(--ink-2); margin: 0; }
+.verdict.primary { border: 2px solid var(--s1); }
+.tile .v { font-size: 30px; font-weight: 700; }
+.tile .k { color: var(--ink-2); font-size: 13px; }
+ul.bul { margin: 8px 0 0; padding-left: 20px; }
+ul.bul li { margin: 6px 0; }
+.chart-box { position: relative; width: 100%; }
+.head { display: flex; justify-content: space-between; align-items: end; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.controls { display: flex; gap: 8px; flex-wrap: wrap; }
+select { font: inherit; font-size: 14px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--ink); max-width: 100%; }
+.legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px; color: var(--ink-2); margin-top: 8px; }
+.legend span::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; background: var(--c); vertical-align: -1px; }
+.tbl-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+th { color: var(--ink-2); font-weight: 600; font-size: 13px; position: sticky; top: 0; background: var(--surface); }
+th[data-k] { cursor: pointer; user-select: none; }
+th[data-k]:hover { color: var(--ink); }
+td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
+tr:hover td { background: var(--div-mid); }
+.bar-cell { display: inline-block; height: 8px; border-radius: 4px; background: var(--s1); vertical-align: middle; margin-right: 8px; }
+.matrix td, .matrix th { text-align: center; padding: 0; border: 2px solid var(--surface); font-size: 12px; font-variant-numeric: tabular-nums; }
+.matrix td { width: 52px; height: 36px; border-radius: 6px; }
+.matrix th.row { text-align: right; padding-right: 8px; white-space: nowrap; }
+.matrix th.col { writing-mode: vertical-rl; transform: rotate(180deg); padding: 6px 0; height: 120px; vertical-align: bottom; text-align: left; }
+.pill { display: inline-block; font-size: 12px; padding: 1px 8px; border-radius: 99px; background: var(--div-mid); color: var(--ink-2); }
+#tip { position: fixed; pointer-events: none; background: var(--surface); color: var(--ink); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-size: 13px; box-shadow: 0 4px 16px rgba(0,0,0,0.15); display: none; z-index: 10; max-width: 260px; }
+footer { margin-top: 48px; color: var(--muted); font-size: 13px; }
+</style>
+</head>
+<body>
+<main>
+	<header>
+		<p class="muted" style="margin-bottom:4px">EDR Endurotech · Garage61 team laps</p>
+		<h1>Who's actually fastest?</h1>
+		<p class="sub">Records alone lie. This ranks drivers by how many teammates they beat, head-to-head, in the same car on the same track.</p>
+	</header>
+
+	<section class="grid g2" id="verdicts"></section>
+	<section class="grid g4" id="tiles" style="margin-top:16px"></section>
+
+	<section class="card">
+		<h2>How it works</h2>
+		<ul class="bul">
+			<li>Every driver's <b>best clean lap</b> in every car + track combo from the team's Garage61 data.</li>
+			<li>Combos with <b>fewer than 3 drivers are thrown out</b>. No padding stats in a car nobody else drives.</li>
+			<li>Inside each combo, everyone goes <b>head-to-head with everyone else</b>. Faster lap wins.</li>
+			<li><b>H2H win %</b> = share of head-to-heads you win. 50% is team average. Beating 10 people in a busy combo counts 9×; beating 2 counts 2×.</li>
+			<li>You need <b>5+ qualifying combos</b> to be ranked.</li>
+			<li><b>Typical gap</b> = your median % behind the fastest lap in each combo (0.5% ≈ 0.5s on a 100s lap).</li>
+		</ul>
+	</section>
+
+	<section class="card">
+		<div class="head"><div><h2>Head-to-head leaderboard</h2><p class="sub">Share of head-to-heads won. Dashed line = team average (50%).</p></div></div>
+		<div class="chart-box" id="lbBox"><canvas id="lb"></canvas></div>
+	</section>
+
+	<section class="grid g2">
+		<div class="card">
+			<h2>Dominance vs proof</h2>
+			<p class="sub">Top-right is what you want: wins a lot, against a lot of people.</p>
+			<div class="chart-box" style="height:380px"><canvas id="sc"></canvas></div>
+		</div>
+		<div class="card">
+			<div class="head"><div><h2>Driver profile</h2><p class="sub">Each axis scaled 0–100 against the team's best.</p></div></div>
+			<div class="controls" id="radarPick"></div>
+			<div class="chart-box" style="height:340px"><canvas id="rd"></canvas></div>
+		</div>
+	</section>
+
+	<section class="card">
+		<h2>Records ≠ speed</h2>
+		<p class="sub">Records weighted by how many drivers each one beat, next to the head-to-head rank.</p>
+		<div class="grid g2" style="margin-top:12px">
+			<div class="chart-box" id="recBox"><canvas id="rec"></canvas></div>
+			<div id="recNotes"></div>
+		</div>
+	</section>
+
+	<section class="card">
+		<h2>Top 10, head to head</h2>
+		<p class="sub">Row driver's win rate against column driver, across every combo they both drove. Blue = row wins more, red = row loses more.</p>
+		<div class="tbl-wrap" style="margin-top:12px"><table class="matrix" id="mx"></table></div>
+	</section>
+
+	<section class="card">
+		<h2>The most contested combos</h2>
+		<p class="sub">The car + track combos the most of us have driven, and who owns them.</p>
+		<div class="tbl-wrap" style="margin-top:12px"><table id="cb"></table></div>
+	</section>
+
+	<section class="card">
+		<h2>Full table</h2>
+		<p class="sub">Click a column to sort.</p>
+		<div class="tbl-wrap" style="margin-top:12px"><table id="full"></table></div>
+	</section>
+
+	<section class="card">
+		<h2>Caveats</h2>
+		<ul class="bul">
+			<li>A best lap reflects <b>seat time</b> as much as talent. Someone who did 200 laps will beat someone who did 5.</li>
+			<li>Laps come from every condition and season. Track evolution, setups and weather aren't controlled for.</li>
+			<li>Laps Garage61 flags as not clean are excluded.</li>
+			<li>Small samples swing. Check the Matchups column before trash-talking.</li>
+		</ul>
+	</section>
+
+	<footer id="foot"></footer>
+</main>
+<div id="tip"></div>
+<script>
+const DATA = __DATA__;
+const D = DATA.drivers;
+const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const fmt = (n, d = 1) => Number(n).toFixed(d);
+const lapFmt = (s) => `${Math.floor(s / 60)}:${(s % 60).toFixed(3).padStart(6, "0")}`;
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+
+// Verdicts: fastest = top H2H; most proven = best H2H among drivers with 200+ matchups.
+const fastest = D[0];
+const proven = [...D].filter((d) => d.matchups >= 200).sort((a, b) => b.h2h - a.h2h)[0];
+const mostRec = [...D].sort((a, b) => b.wrec - a.wrec)[0];
+document.getElementById("verdicts").innerHTML = `
+	<div class="card verdict primary"><div class="label">Fastest driver</div><div class="who">${esc(fastest.name)}</div>
+		<p class="why">Wins <b>${fmt(fastest.h2h)}%</b> of head-to-heads and holds the record in <b>${fastest.rec} of ${fastest.combos}</b> combos driven. Nobody else is above ${fmt(D[1].h2h, 0)}%.</p></div>
+	<div class="card verdict"><div class="label">Most proven</div><div class="who">${esc(proven.name)}</div>
+		<p class="why"><b>${fmt(proven.h2h)}%</b> over <b>${proven.matchups}</b> matchups in ${proven.combos} combos, typically <b>${fmt(proven.gap, 2)}%</b> off the best lap. ${proven.slug === mostRec.slug ? `${proven.rec} records beating <b>${proven.wrec}</b> drivers, the most on the team.` : ""}</p></div>`;
+const tiles = [
+	[DATA.totals.drivers, "drivers with laps"],
+	[D.length, "drivers ranked"],
+	[DATA.totals.combos, `contested combos (of ${DATA.totals.allCombos})`],
+	[D.reduce((a, d) => a + d.matchups, 0) / 2 | 0, "head-to-heads"],
+];
+document.getElementById("tiles").innerHTML = tiles.map(([v, k]) => `<div class="card tile"><div class="v">${Number(v).toLocaleString()}</div><div class="k">${k}</div></div>`).join("");
+
+const charts = [];
+function baseOpts() {
+	Chart.defaults.font.family = 'system-ui, -apple-system, "Segoe UI", sans-serif';
+	Chart.defaults.color = css("--ink-2");
+	Chart.defaults.borderColor = css("--grid");
+}
+const tooltip = () => ({
+	backgroundColor: css("--surface"), titleColor: css("--ink"), bodyColor: css("--ink-2"),
+	borderColor: css("--border"), borderWidth: 1, padding: 10, cornerRadius: 8, displayColors: false,
+});
+
+// Draws a dashed 50% reference line on the x axis.
+const refLine = { id: "ref", afterDatasetsDraw(c, _a, o) {
+	if (o.x == null) return;
+	const { ctx, chartArea: a, scales } = c; const x = scales.x.getPixelForValue(o.x);
+	ctx.save(); ctx.strokeStyle = css("--muted"); ctx.setLineDash([4, 4]); ctx.lineWidth = 1;
+	ctx.beginPath(); ctx.moveTo(x, a.top); ctx.lineTo(x, a.bottom); ctx.stroke(); ctx.restore();
+} };
+// Labels selected scatter points by name.
+const pointLabels = { id: "plabels", afterDatasetsDraw(c, _a, o) {
+	if (!o.show) return;
+	const { ctx } = c; const meta = c.getDatasetMeta(0);
+	ctx.save(); ctx.font = "12px system-ui, sans-serif"; ctx.fillStyle = css("--ink");
+	meta.data.forEach((p, i) => { const d = c.data.datasets[0].data[i]; if (o.show.has(d.name)) ctx.fillText(d.name, p.x + 8, p.y - 6); });
+	ctx.restore();
+} };
+
+function draw() {
+	charts.splice(0).forEach((c) => c.destroy());
+	baseOpts();
+	const s1 = css("--s1");
+
+	// Leaderboard
+	document.getElementById("lbBox").style.height = `${D.length * 26 + 40}px`;
+	charts.push(new Chart(document.getElementById("lb"), {
+		type: "bar", plugins: [refLine],
+		data: { labels: D.map((d) => d.name), datasets: [{ data: D.map((d) => d.h2h), backgroundColor: s1, borderRadius: 4, borderSkipped: "start", barPercentage: 0.7, categoryPercentage: 1 }] },
+		options: { indexAxis: "y", maintainAspectRatio: false, animation: false,
+			scales: { x: { min: 0, max: 100, grid: { color: css("--grid") }, ticks: { callback: (v) => `${v}%` } }, y: { grid: { display: false }, ticks: { color: css("--ink"), autoSkip: false } } },
+			plugins: { legend: { display: false }, ref: { x: 50 }, tooltip: { ...tooltip(), callbacks: {
+				title: (i) => D[i[0].dataIndex].name,
+				label: (i) => { const d = D[i.dataIndex]; return [`H2H win: ${fmt(d.h2h)}%`, `Matchups: ${d.matchups} in ${d.combos} combos`, `Typical gap: ${fmt(d.gap, 2)}%`, `Records: ${d.rec} (beat ${d.wrec})`]; } } } } },
+	}));
+
+	// Scatter
+	const label = new Set([...D.slice(0, 4), ...[...D].sort((a, b) => b.matchups - a.matchups).slice(0, 3)].map((d) => d.name));
+	charts.push(new Chart(document.getElementById("sc"), {
+		type: "scatter", plugins: [pointLabels, refLine],
+		data: { datasets: [{ data: D.map((d) => ({ x: d.matchups, y: d.h2h, name: d.name })), backgroundColor: s1, borderColor: css("--surface"), borderWidth: 2, pointRadius: 6, pointHoverRadius: 9, pointHitRadius: 12 }] },
+		options: { maintainAspectRatio: false, animation: false, layout: { padding: { right: 70 } },
+			scales: { x: { title: { display: true, text: "Matchups (sample size)" }, grid: { color: css("--grid") } }, y: { title: { display: true, text: "H2H win %" }, grid: { color: css("--grid") }, ticks: { callback: (v) => `${v}%` } } },
+			plugins: { legend: { display: false }, plabels: { show: label }, tooltip: { ...tooltip(), callbacks: { title: (i) => i[0].raw.name, label: (i) => [`H2H win: ${fmt(i.raw.y)}%`, `Matchups: ${i.raw.x}`] } } } },
+	}));
+
+	// Radar
+	const maxW = Math.max(...D.map((d) => d.wrec)), maxM = Math.max(...D.map((d) => d.matchups)), maxR = Math.max(...D.map((d) => d.rec));
+	const prof = (d) => [d.h2h, d.pctl, Math.max(0, 100 - d.gap * 50), (100 * d.wrec) / maxW, (100 * d.rec) / maxR, (100 * d.matchups) / maxM];
+	const colors = [css("--s1"), css("--s2"), css("--s3")];
+	const picks = [...document.querySelectorAll("#radarPick select")].map((s) => D.find((d) => d.slug === s.value)).filter(Boolean);
+	charts.push(new Chart(document.getElementById("rd"), {
+		type: "radar",
+		data: { labels: ["H2H win %", "Avg finish", "Pace (gap)", "Records weight", "Record count", "Sample size"],
+			datasets: picks.map((d, i) => ({ label: d.name, data: prof(d), borderColor: colors[i], backgroundColor: colors[i] + "22", borderWidth: 2, pointRadius: 3, pointBackgroundColor: colors[i] })) },
+		options: { maintainAspectRatio: false, animation: false,
+			scales: { r: { min: 0, max: 100, ticks: { display: false, stepSize: 25 }, grid: { color: css("--grid") }, angleLines: { color: css("--grid") }, pointLabels: { color: css("--ink-2"), font: { size: 12 } } } },
+			plugins: { legend: { position: "bottom", labels: { usePointStyle: true, pointStyle: "rectRounded", color: css("--ink-2") } }, tooltip: { ...tooltip(), displayColors: true, callbacks: { label: (i) => `${i.dataset.label}: ${fmt(i.raw, 0)}` } } } },
+	}));
+
+	// Records
+	const R = [...D].sort((a, b) => b.wrec - a.wrec).slice(0, 12);
+	document.getElementById("recBox").style.height = `${R.length * 28 + 40}px`;
+	charts.push(new Chart(document.getElementById("rec"), {
+		type: "bar",
+		data: { labels: R.map((d) => d.name), datasets: [{ data: R.map((d) => d.wrec), backgroundColor: s1, borderRadius: 4, borderSkipped: "start", barPercentage: 0.7, categoryPercentage: 1 }] },
+		options: { indexAxis: "y", maintainAspectRatio: false, animation: false,
+			scales: { x: { title: { display: true, text: "Drivers beaten by their records" }, grid: { color: css("--grid") } }, y: { grid: { display: false }, ticks: { color: css("--ink"), autoSkip: false } } },
+			plugins: { legend: { display: false }, tooltip: { ...tooltip(), callbacks: { label: (i) => { const d = R[i.dataIndex]; return [`${d.rec} records, beating ${d.wrec} drivers`, `H2H rank: #${D.indexOf(d) + 1} (${fmt(d.h2h)}%)`]; } } } } },
+	}));
+}
+
+// Radar pickers
+const defaults = [fastest, proven, D.find((d) => d.slug !== fastest.slug && d.slug !== proven.slug)];
+document.getElementById("radarPick").innerHTML = defaults.map((p, i) =>
+	`<select aria-label="Driver ${i + 1}">${D.map((d) => `<option value="${d.slug}"${d.slug === p.slug ? " selected" : ""}>${esc(d.name)}</option>`).join("")}</select>`).join("");
+document.getElementById("radarPick").addEventListener("change", draw);
+
+// Records notes
+const volume = [...D].sort((a, b) => b.rec - a.rec).filter((d) => D.indexOf(d) >= 4).slice(0, 2);
+document.getElementById("recNotes").innerHTML = `<ul class="bul">
+	<li><b>${esc(mostRec.name)}</b>'s records beat the most drivers (${mostRec.wrec}), yet rank only #${D.indexOf(mostRec) + 1} head-to-head.</li>
+	${volume.map((d) => `<li><b>${esc(d.name)}</b> has <b>${d.rec}</b> records but ranks <b>#${D.indexOf(d) + 1}</b> on H2H (${fmt(d.h2h)}%). Lots of laps in lots of cars, not dominance.</li>`).join("")}
+	<li><b>${esc(fastest.name)}</b> has fewer records (${fastest.rec}) but almost never loses in the combos driven.</li></ul>`;
+
+// Matrix
+const H = DATA.h2h;
+function mixColor(p) { // p in [0,1]; 0.5 = neutral
+	const a = p >= 0.5 ? css("--div-pos") : css("--div-neg"); const t = Math.min(1, Math.abs(p - 0.5) * 2);
+	const h = (x) => [1, 3, 5].map((i) => parseInt(x.slice(i, i + 2), 16)); const m = h(css("--div-mid")), e = h(a);
+	return `rgb(${m.map((v, i) => Math.round(v + (e[i] - v) * t)).join(",")})`;
+}
+function drawMatrix() {
+	const short = (n) => n.split(" ")[0] + " " + (n.split(" ")[1] || "").slice(0, 1);
+	let h = `<tr><th></th>${H.names.map((n) => `<th class="col">${esc(n)}</th>`).join("")}</tr>`;
+	H.cells.forEach((row, i) => {
+		h += `<tr><th class="row">${esc(H.names[i])}</th>`;
+		row.forEach((c, j) => {
+			if (!c) { h += `<td style="background:var(--grid)"></td>`; return; }
+			const [w, n] = c;
+			if (!n) { h += `<td class="muted" data-t="${esc(H.names[i])} and ${esc(H.names[j])} never shared a combo">–</td>`; return; }
+			const p = w / n; const strong = Math.abs(p - 0.5) > 0.3;
+			h += `<td style="background:${mixColor(p)};color:${strong ? "#fff" : "var(--ink)"}" data-t="${esc(H.names[i])} beat ${esc(H.names[j])} in ${w} of ${n} shared combos">${w}-${n - w}</td>`;
+		});
+		h += "</tr>";
+	});
+	document.getElementById("mx").innerHTML = h;
+}
+const tip = document.getElementById("tip");
+document.getElementById("mx").addEventListener("mousemove", (e) => {
+	const t = e.target.closest("td[data-t]"); if (!t) { tip.style.display = "none"; return; }
+	tip.textContent = t.dataset.t; tip.style.display = "block";
+	tip.style.left = Math.min(e.clientX + 14, innerWidth - 270) + "px"; tip.style.top = e.clientY + 14 + "px";
+});
+document.getElementById("mx").addEventListener("mouseleave", () => (tip.style.display = "none"));
+
+// Contested combos
+document.getElementById("cb").innerHTML = `<tr><th>Car</th><th>Track</th><th class="n">Drivers</th><th>Record holder</th><th class="n">Lap</th><th>Next best</th><th class="n">Margin</th></tr>` +
+	DATA.combos.slice(0, 20).map((c) => `<tr><td>${esc(c.car)}</td><td>${esc(c.track)}</td><td class="n">${c.n}</td><td><b>${esc(c.holder)}</b></td><td class="n">${lapFmt(c.time)}</td><td>${esc(c.second)}</td><td class="n">${fmt(c.margin, 2)}%</td></tr>`).join("");
+
+// Full table
+const cols = [["#", "rank", 1], ["Driver", "name"], ["H2H win %", "h2h", 1], ["Matchups", "matchups", 1], ["Combos", "combos", 1], ["Typical gap", "gap", 1], ["Avg finish", "pctl", 1], ["Records", "rec", 1], ["Drivers beaten", "wrec", 1]];
+let sortK = "h2h", sortDir = -1;
+function drawFull() {
+	const rows = D.map((d, i) => ({ ...d, rank: i + 1 })).sort((a, b) => (a[sortK] > b[sortK] ? 1 : a[sortK] < b[sortK] ? -1 : 0) * sortDir);
+	document.getElementById("full").innerHTML = `<tr>${cols.map(([l, k, n]) => `<th data-k="${k}" class="${n ? "n" : ""}">${l}${k === sortK ? (sortDir > 0 ? " ▲" : " ▼") : ""}</th>`).join("")}</tr>` +
+		rows.map((d) => `<tr><td class="n">${d.rank}</td><td>${esc(d.name)}</td><td class="n"><span class="bar-cell" style="width:${d.h2h * 0.6}px"></span>${fmt(d.h2h)}%</td><td class="n">${d.matchups}</td><td class="n">${d.combos}</td><td class="n">${fmt(d.gap, 2)}%</td><td class="n">${fmt(d.pctl, 0)}%</td><td class="n">${d.rec}</td><td class="n">${d.wrec}</td></tr>`).join("");
+}
+document.getElementById("full").addEventListener("click", (e) => {
+	const k = e.target.closest("th[data-k]")?.dataset.k; if (!k) return;
+	sortDir = k === sortK ? -sortDir : k === "name" || k === "rank" || k === "gap" ? 1 : -1; sortK = k; drawFull();
+});
+
+document.getElementById("foot").textContent = `Built from ${DATA.totals.laps.toLocaleString()} driver best laps across ${DATA.totals.allCombos.toLocaleString()} car + track combos on Garage61. Generated ${new Date(DATA.generated).toLocaleDateString()}.`;
+
+draw(); drawMatrix(); drawFull();
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { draw(); drawMatrix(); });
+</script>
+</body>
+</html>
