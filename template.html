@@ -81,6 +81,11 @@ tr.click { cursor: pointer; }
 .matrix td { min-width: 46px; height: 34px; border-radius: 6px; }
 .matrix th.row { text-align: right; padding-right: 8px; white-space: nowrap; }
 .matrix th.col { writing-mode: vertical-rl; transform: rotate(180deg); padding: 6px 0; height: 120px; vertical-align: bottom; text-align: left; }
+.pivot td, .pivot th { text-align: center; padding: 0 4px; border: 2px solid var(--surface); font-size: 12px; font-variant-numeric: tabular-nums; }
+.pivot td { min-width: 52px; height: 32px; border-radius: 6px; }
+.pivot th.row { text-align: left; padding-right: 8px; white-space: nowrap; position: sticky; left: 0; background: var(--surface); z-index: 2; }
+.pivot th.col { writing-mode: vertical-rl; transform: rotate(180deg); padding: 6px 0; height: 160px; vertical-align: bottom; text-align: left; max-width: 34px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+.pivot th.col.on { color: var(--ink); text-decoration: underline; }
 .empty { color: var(--muted); padding: 24px 0; text-align: center; }
 #tip { position: fixed; pointer-events: none; background: var(--surface); color: var(--ink); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-size: 13px; box-shadow: 0 4px 16px rgba(0,0,0,0.15); display: none; z-index: 10; max-width: 260px; }
 footer { margin-top: 48px; color: var(--muted); font-size: 13px; }
@@ -152,6 +157,16 @@ footer { margin-top: 48px; color: var(--muted); font-size: 13px; }
 	</section>
 
 	<section class="card">
+		<div class="head"><div><h2>Pivot</h2><p class="sub" id="pvSub"></p></div>
+			<div class="controls">
+				<label for="pvDim" class="muted" style="font-size:13px">Columns</label><select id="pvDim"></select>
+				<label for="pvMetric" class="muted" style="font-size:13px">Cell</label><select id="pvMetric"></select>
+				<label for="pvN" class="muted" style="font-size:13px">Show</label><select id="pvN"><option value="10">10</option><option value="20">20</option><option value="40">40</option><option value="999">All</option></select>
+			</div></div>
+		<div class="tbl-wrap"><table class="pivot" id="pv"></table></div>
+	</section>
+
+	<section class="card">
 		<div class="head"><div><h2>Drivers</h2><p class="sub">Click a column to sort, a row to see that driver's combos.</p></div></div>
 		<div class="tbl-wrap"><table id="full"></table></div>
 	</section>
@@ -192,7 +207,7 @@ const METRICS = [
 ];
 const M = Object.fromEntries(METRICS.map((m) => [m[0], { label: m[1], f: m[2], hi: m[3] }]));
 const DISCS = ["road", "oval", "dirt"];
-const DEF = { car: "", track: "", disc: ["road", "oval", "dirt"], since: "", minN: 3, minC: 5, off: [], metric: "h2h", sx: "matchups", sy: "h2h", mxN: "10" };
+const DEF = { car: "", track: "", disc: ["road", "oval", "dirt"], since: "", minN: 3, minC: 5, off: [], metric: "h2h", sx: "matchups", sy: "h2h", mxN: "10", pvDim: "car", pvMetric: "h2h", pvN: "20", pvSort: null };
 let S = { ...DEF };
 let R; // current results
 
@@ -391,11 +406,74 @@ function showCombo(c) {
 	$("comboDetail").scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 
+// ---- Pivot: drivers x dimension ----
+const PV_DIMS = {
+	car: ["Car", (c) => c.car],
+	make: ["Manufacturer", (c) => c.car.split(" ")[0]],
+	track: ["Track", (c) => c.track],
+	venue: ["Venue (any layout)", (c) => c.track.replace(/\s*\(.*\)$/, "")],
+	disc: ["Discipline", (c) => c.disc[0].toUpperCase() + c.disc.slice(1)],
+	month: ["Month lap set", null],
+};
+const PV_METRICS = {
+	h2h: ["H2H win %", (x) => (100 * x.w) / x.m, (v) => fmt(v, 0)],
+	pctl: ["Avg finish %", (x) => (100 * x.pct) / x.c, (v) => fmt(v, 0)],
+	gap: ["Typical gap %", (x) => median(x.gaps), (v) => fmt(v, 2)],
+	combos: ["Combos", (x) => x.c, (v) => v],
+	rec: ["Fastest laps", (x) => x.rec, (v) => v],
+};
+function renderPivot() {
+	const shown = new Set(R.drivers.map((d) => d.i));
+	const [dimLabel, keyOf] = PV_DIMS[S.pvDim], [mLabel, val, show] = PV_METRICS[S.pvMetric];
+	const cells = new Map(), colW = new Map();
+	for (const c of R.combos) {
+		const n = c.n;
+		c.e.forEach(([d, t, dt], i) => {
+			if (!shown.has(d)) return;
+			const col = keyOf ? keyOf(c) : dt.slice(0, 7);
+			const k = `${d}|${col}`;
+			const x = cells.get(k) || { w: 0, m: 0, pct: 0, c: 0, gaps: [], rec: 0 };
+			x.w += n - 1 - i; x.m += n - 1; x.pct += 1 - i / (n - 1); x.c++; x.gaps.push((t / c.best - 1) * 100); if (!i) x.rec++;
+			cells.set(k, x); colW.set(col, (colW.get(col) || 0) + n - 1);
+		});
+	}
+	let cols = [...colW.entries()].sort((a, b) => b[1] - a[1]).slice(0, +S.pvN).map(([k]) => k);
+	if (S.pvDim === "month") cols.sort();
+	if (S.pvSort && !cols.includes(S.pvSort)) S.pvSort = null;
+	const v = (d, col) => { const x = cells.get(`${d.i}|${col}`); return x ? val(x) : null; };
+	const lowGood = S.pvMetric === "gap";
+	let rows = sorted(R.drivers, "name", 1);
+	if (S.pvSort) rows = [...rows].sort((a, b) => { const x = v(a, S.pvSort), y = v(b, S.pvSort); return x == null ? 1 : y == null ? -1 : lowGood ? x - y : y - x; });
+	$("pvSub").textContent = `${mLabel} per driver, by ${dimLabel.toLowerCase()}. ${cols.length} of ${colW.size} columns, busiest first. Click a column to sort by it.`;
+	if (!cols.length || !rows.length) { $("pv").innerHTML = `<tr><td class="empty">Nothing matches these filters.</td></tr>`; return; }
+	// Colour: % metrics around 50; others by rank within the column.
+	const colRank = new Map(cols.map((col) => [col, rows.map((d) => v(d, col)).filter((x) => x != null).sort((a, b) => a - b)]));
+	const shade = (x, col) => {
+		if (S.pvMetric === "h2h" || S.pvMetric === "pctl") return mixColor(x / 100);
+		const arr = colRank.get(col); if (arr.length < 2) return "var(--div-mid)";
+		const r = arr.indexOf(x) / (arr.length - 1); return mixColor(lowGood ? 1 - r : r);
+	};
+	let h = `<thead><tr><th class="row">Driver</th>${cols.map((col) => `<th class="col${col === S.pvSort ? " on" : ""}" data-col="${esc(col)}" title="${esc(col)}">${esc(col)}</th>`).join("")}</tr></thead><tbody>`;
+	for (const d of rows) {
+		h += `<tr><th class="row">${esc(d.name)}</th>`;
+		for (const col of cols) {
+			const x = cells.get(`${d.i}|${col}`);
+			if (!x) { h += `<td></td>`; continue; }
+			const val_ = val(x), strong = S.pvMetric === "h2h" || S.pvMetric === "pctl" ? Math.abs(val_ / 100 - 0.5) > 0.3 : false;
+			const tipT = `${d.name} · ${col}: ${x.c} combo${x.c > 1 ? "s" : ""}, H2H ${fmt((100 * x.w) / x.m, 0)}% (${x.w}–${x.m - x.w}), typical gap ${fmt(median(x.gaps), 2)}%, ${x.rec} fastest lap${x.rec === 1 ? "" : "s"}`;
+			h += `<td style="background:${shade(val_, col)};color:${strong ? "#fff" : "var(--ink)"}" data-t="${esc(tipT)}">${show(val_)}</td>`;
+		}
+		h += "</tr>";
+	}
+	$("pv").innerHTML = h + "</tbody>";
+}
+
 // ---- Filters UI ----
 function syncInputs() {
 	$("fCar").value = S.car; $("fTrack").value = S.track; $("fSince").value = S.since;
 	$("fMinN").value = S.minN; $("fMinC").value = S.minC; $("metric").value = S.metric;
 	$("sx").value = S.sx; $("sy").value = S.sy; $("mxN").value = S.mxN;
+	$("pvDim").value = S.pvDim; $("pvMetric").value = S.pvMetric; $("pvN").value = S.pvN;
 	$("fDisc").querySelectorAll("input").forEach((i) => (i.checked = S.disc.includes(i.value)));
 	renderChips();
 }
@@ -415,7 +493,7 @@ function summary() {
 function renderAll() {
 	chartDefaults();
 	R = compute();
-	summary(); renderTiles(); renderLeaderboard(); renderScatter(); renderRadar(); renderMatrix(); renderFull(); renderDrill(); renderCombos();
+	summary(); renderTiles(); renderLeaderboard(); renderScatter(); renderRadar(); renderMatrix(); renderPivot(); renderFull(); renderDrill(); renderCombos();
 	writeHash();
 }
 let t; const later = () => { clearTimeout(t); t = setTimeout(renderAll, 150); };
@@ -439,6 +517,11 @@ $("sx").onchange = (e) => { S.sx = e.target.value; renderScatter(); writeHash();
 $("sy").onchange = (e) => { S.sy = e.target.value; renderScatter(); writeHash(); };
 $("mxN").onchange = (e) => { S.mxN = e.target.value; renderMatrix(); writeHash(); };
 $("radarPick").onchange = renderRadar;
+$("pvDim").innerHTML = Object.entries(PV_DIMS).map(([k, [l]]) => `<option value="${k}">${l}</option>`).join("");
+$("pvMetric").innerHTML = Object.entries(PV_METRICS).map(([k, [l]]) => `<option value="${k}">${l}</option>`).join("");
+const pv = (k) => (e) => { S[k] = e.target.value; S.pvSort = null; renderPivot(); writeHash(); };
+$("pvDim").onchange = pv("pvDim"); $("pvMetric").onchange = (e) => { S.pvMetric = e.target.value; renderPivot(); writeHash(); }; $("pvN").onchange = pv("pvN");
+$("pv").onclick = (e) => { const th = e.target.closest("th[data-col]"); if (!th) return; S.pvSort = S.pvSort === th.dataset.col ? null : th.dataset.col; renderPivot(); writeHash(); };
 $("drill").onchange = (e) => drillTo(+e.target.value);
 const toggleChip = (el) => { const i = +el.dataset.i; S.off = S.off.includes(i) ? S.off.filter((x) => x !== i) : [...S.off, i]; renderChips(); later(); };
 $("fDrivers").onclick = (e) => { const c = e.target.closest(".chip"); if (c) toggleChip(c); };
@@ -454,6 +537,12 @@ $("mx").addEventListener("mousemove", (e) => {
 	tip.style.left = Math.min(e.clientX + 14, innerWidth - 270) + "px"; tip.style.top = e.clientY + 14 + "px";
 });
 $("mx").addEventListener("mouseleave", () => (tip.style.display = "none"));
+$("pv").addEventListener("mousemove", (e) => {
+	const c = e.target.closest("td[data-t]"); if (!c) { tip.style.display = "none"; return; }
+	tip.textContent = c.dataset.t; tip.style.display = "block";
+	tip.style.left = Math.min(e.clientX + 14, innerWidth - 270) + "px"; tip.style.top = e.clientY + 14 + "px";
+});
+$("pv").addEventListener("mouseleave", () => (tip.style.display = "none"));
 
 $("foot").textContent = `${RAW.combos.reduce((a, c) => a + c.e.length, 0).toLocaleString()} driver best laps across ${RAW.combos.length.toLocaleString()} car + track combos from Garage61 · data pulled ${RAW.generated}.`;
 readHash(); syncInputs(); renderAll();
