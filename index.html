@@ -35,7 +35,7 @@
 }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--page); color: var(--ink); font: 15px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
-main { max-width: 1100px; margin: 0 auto; padding: 32px 16px 64px; }
+main { max-width: 1200px; margin: 0 auto; padding: 32px 16px 64px; }
 h1 { font-size: clamp(28px, 5vw, 44px); line-height: 1.1; margin: 0 0 8px; letter-spacing: -0.02em; }
 h2 { font-size: 22px; margin: 0 0 4px; letter-spacing: -0.01em; }
 h3 { font-size: 15px; margin: 0 0 8px; color: var(--ink-2); font-weight: 600; }
@@ -176,7 +176,7 @@ document.getElementById("verdicts").innerHTML = `
 	<div class="card verdict primary"><div class="label">Fastest driver</div><div class="who">${esc(fastest.name)}</div>
 		<p class="why">Wins <b>${fmt(fastest.h2h)}%</b> of head-to-heads and holds the record in <b>${fastest.rec} of ${fastest.combos}</b> combos driven. Nobody else is above ${fmt(D[1].h2h, 0)}%.</p></div>
 	<div class="card verdict"><div class="label">Most proven</div><div class="who">${esc(proven.name)}</div>
-		<p class="why"><b>${fmt(proven.h2h)}%</b> over <b>${proven.matchups}</b> matchups in ${proven.combos} combos, typically <b>${fmt(proven.gap, 2)}%</b> off the best lap. ${proven.slug === mostRec.slug ? `${proven.rec} records beating <b>${proven.wrec}</b> drivers, the most on the team.` : ""}</p></div>`;
+		<p class="why"><b>${fmt(proven.h2h)}%</b> over <b>${proven.matchups}</b> matchups in ${proven.combos} combos, typically <b>${fmt(proven.gap, 2)}%</b> off the best lap. ${proven.rec} records beating <b>${proven.wrec}</b> drivers in total.</p></div>`;
 const tiles = [
 	[DATA.totals.drivers, "drivers with laps"],
 	[D.length, "drivers ranked"],
@@ -208,7 +208,13 @@ const pointLabels = { id: "plabels", afterDatasetsDraw(c, _a, o) {
 	if (!o.show) return;
 	const { ctx } = c; const meta = c.getDatasetMeta(0);
 	ctx.save(); ctx.font = "12px system-ui, sans-serif"; ctx.fillStyle = css("--ink");
-	meta.data.forEach((p, i) => { const d = c.data.datasets[0].data[i]; if (o.show.has(d.name)) ctx.fillText(d.name, p.x + 8, p.y - 6); });
+	const placed = [];
+	meta.data.map((p, i) => [p, c.data.datasets[0].data[i]]).filter(([, d]) => o.show.has(d.name)).sort((a, b) => a[0].y - b[0].y).forEach(([p, d]) => {
+		const w = ctx.measureText(d.name).width; let x = p.x + 8, y = p.y - 6;
+		if (x + w > c.chartArea.right + 60) x = p.x - 8 - w; // flip left near the edge
+		while (placed.some((b) => x < b.x + b.w && x + w > b.x && Math.abs(y - b.y) < 14)) y += 14; // push down past overlaps
+		placed.push({ x, y, w }); ctx.fillText(d.name, x, y);
+	});
 	ctx.restore();
 } };
 
@@ -272,7 +278,7 @@ document.getElementById("radarPick").innerHTML = defaults.map((p, i) =>
 document.getElementById("radarPick").addEventListener("change", draw);
 
 // Records notes
-const volume = [...D].sort((a, b) => b.rec - a.rec).filter((d) => D.indexOf(d) >= 4).slice(0, 2);
+const volume = [...D].sort((a, b) => b.rec - a.rec).filter((d) => D.indexOf(d) >= 4 && d.slug !== mostRec.slug).slice(0, 2);
 document.getElementById("recNotes").innerHTML = `<ul class="bul">
 	<li><b>${esc(mostRec.name)}</b>'s records beat the most drivers (${mostRec.wrec}), yet rank only #${D.indexOf(mostRec) + 1} head-to-head.</li>
 	${volume.map((d) => `<li><b>${esc(d.name)}</b> has <b>${d.rec}</b> records but ranks <b>#${D.indexOf(d) + 1}</b> on H2H (${fmt(d.h2h)}%). Lots of laps in lots of cars, not dominance.</li>`).join("")}
